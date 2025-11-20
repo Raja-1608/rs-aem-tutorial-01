@@ -7,7 +7,7 @@ const isDesktop = window.matchMedia('(min-width: 900px)');
 /**
  * Toggles all nav sections
  * @param {Element} sections The container element
- * @param {Boolean|String} expanded Whether the element should be expanded or collapsed
+ * @param {Boolean|String} expanded Whether to expand/collapse sections
  */
 function toggleAllNavSections(sections, expanded = false) {
   const isExpanded = expanded === true || expanded === 'true';
@@ -15,19 +15,6 @@ function toggleAllNavSections(sections, expanded = false) {
   sections.querySelectorAll(selector).forEach((section) => {
     section.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
   });
-}
-
-/**
- * Document-level click handler to close mobile nav when clicking outside
- */
-function onDocumentClickCloseNav(e) {
-  const nav = document.getElementById('nav');
-  if (!nav) return;
-  if (nav.getAttribute('aria-expanded') !== 'true') return;
-  if (!nav.contains(e.target)) {
-    const navSections = nav.querySelector('.nav-sections');
-    toggleMenu(nav, navSections, false);
-  }
 }
 
 /**
@@ -39,7 +26,6 @@ function onDocumentClickCloseNav(e) {
 function toggleMenu(nav, navSections, forceExpanded = null) {
   const currentOpen = nav.getAttribute('aria-expanded') === 'true';
   const shouldOpen = forceExpanded !== null ? Boolean(forceExpanded) : !currentOpen;
-
   const button = nav.querySelector('.nav-hamburger button');
 
   // Lock body scroll only when menu is open on mobile
@@ -55,7 +41,7 @@ function toggleMenu(nav, navSections, forceExpanded = null) {
     button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
   }
 
-  // Enable nav dropdown keyboard accessibility on desktop
+  // Enable keyboard accessibility for nav drops on desktop
   const navDrops = navSections ? navSections.querySelectorAll('.nav-drop') : [];
   if (isDesktop.matches) {
     navDrops.forEach((drop) => {
@@ -73,7 +59,7 @@ function toggleMenu(nav, navSections, forceExpanded = null) {
     });
   }
 
-  // Enable/disable collapse behaviors
+  // Escape + focusout only active when menu open (mobile) or on desktop for collapse
   if (shouldOpen || isDesktop.matches) {
     window.addEventListener('keydown', closeOnEscape);
     nav.addEventListener('focusout', closeOnFocusLost);
@@ -82,7 +68,7 @@ function toggleMenu(nav, navSections, forceExpanded = null) {
     nav.removeEventListener('focusout', closeOnFocusLost);
   }
 
-  // Document click to close only when mobile menu is open
+  // Click outside to close on mobile
   if (shouldOpen && !isDesktop.matches) {
     document.addEventListener('click', onDocumentClickCloseNav);
   } else {
@@ -90,6 +76,22 @@ function toggleMenu(nav, navSections, forceExpanded = null) {
   }
 }
 
+/**
+ * Document-level click handler to close mobile nav when clicking outside
+ */
+function onDocumentClickCloseNav(e) {
+  const nav = document.getElementById('nav');
+  if (!nav) return;
+  if (nav.getAttribute('aria-expanded') !== 'true') return;
+  if (!nav.contains(e.target)) {
+    const navSections = nav.querySelector('.nav-sections');
+    toggleMenu(nav, navSections, false);
+  }
+}
+
+/**
+ * Keyboard: open nav-drop on Enter/Space
+ */
 function openOnKeydown(e) {
   const focused = document.activeElement;
   if (!focused || focused.className !== 'nav-drop') return;
@@ -123,14 +125,12 @@ function closeOnEscape(e) {
     : null;
 
   if (navSectionExpanded && isDesktop.matches) {
-    // collapse all sections but keep focus on the previously expanded element
     toggleAllNavSections(navSections, false);
     navSectionExpanded.focus();
     return;
   }
 
   if (!isDesktop.matches) {
-    // close full mobile menu
     toggleMenu(nav, navSections, false);
     const btn = nav.querySelector('button');
     if (btn) btn.focus();
@@ -158,12 +158,10 @@ function closeOnFocusLost(e) {
  * @param {Element} block The header block element
  */
 export default async function decorate(block) {
-  // load nav as fragment
   const navMeta = getMetadata('nav');
   const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/nav';
   const fragment = await loadFragment(navPath);
 
-  // decorate nav DOM
   block.textContent = '';
   const nav = document.createElement('nav');
   nav.id = 'nav';
