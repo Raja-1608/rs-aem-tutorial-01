@@ -48,11 +48,12 @@ function openOnKeydown(e) {
 }
 
 function handleNavDropFocus(e) {
-  const target = e.target;
+  const { target } = e;
   if (!target) return;
   target.removeEventListener('keydown', openOnKeydown);
   target.addEventListener('keydown', openOnKeydown);
 }
+
 
 /**
  * Toggles all nav sections
@@ -60,10 +61,28 @@ function handleNavDropFocus(e) {
  * @param {Boolean} expanded Whether the element should be expanded or collapsed
  */
 function toggleAllNavSections(sections, expanded = false) {
-  sections.querySelectorAll('.nav-sections .default-content-wrapper > ul > li').forEach((section) => {
-    section.setAttribute('aria-expanded', expanded);
+  // normalize expanded to boolean (accepts 'true'/'false' strings)
+  const isExpanded = (expanded === true || expanded === 'true');
+
+  // scope the selector to the passed-in sections element
+  sections.querySelectorAll(':scope .default-content-wrapper > ul > li').forEach((section) => {
+    section.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
   });
 }
+
+/**
+ * Document-level click handler to close mobile nav when clicking outside
+ */
+function onDocumentClickCloseNav(e) {
+  const nav = document.getElementById('nav');
+  if (!nav) return;
+  if (nav.getAttribute('aria-expanded') !== 'true') return;
+  if (!nav.contains(e.target)) {
+    const navSections = nav.querySelector('.nav-sections');
+    toggleMenu(nav, navSections, false);
+  }
+}
+
 
 /**
  * Toggles the entire nav
