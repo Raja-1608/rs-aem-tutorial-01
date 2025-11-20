@@ -91,39 +91,63 @@ function onDocumentClickCloseNav(e) {
  * @param {*} forceExpanded Optional param to force nav expand behavior when not null
  */
 function toggleMenu(nav, navSections, forceExpanded = null) {
-  const expanded = forceExpanded !== null ? !forceExpanded : nav.getAttribute('aria-expanded') === 'true';
+  const currentOpen = nav.getAttribute('aria-expanded') === 'true';
+  // if forceExpanded provided, use it directly; otherwise toggle
+  const shouldOpen = (forceExpanded !== null) ? Boolean(forceExpanded) : !currentOpen;
+
   const button = nav.querySelector('.nav-hamburger button');
-  document.body.style.overflowY = (expanded || isDesktop.matches) ? '' : 'hidden';
-  nav.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-  toggleAllNavSections(navSections, expanded || isDesktop.matches ? 'false' : 'true');
-  button.setAttribute('aria-label', expanded ? 'Open navigation' : 'Close navigation');
-  // enable nav dropdown keyboard accessibility
-  const navDrops = navSections.querySelectorAll('.nav-drop');
+
+  // body scrolling: lock only when menu is open on mobile
+  document.body.style.overflowY = (shouldOpen && !isDesktop.matches) ? 'hidden' : '';
+
+  // set nav attributes and classes
+  nav.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+  nav.classList.toggle('nav--open', shouldOpen);
+
+  // set aria-expanded on sections: if desktop and nav sections visible, expand sections only if desktop and shouldOpen true
+  toggleAllNavSections(navSections, (shouldOpen && isDesktop.matches) ? true : false);
+
+  // update button label sensibly
+  if (button) {
+    button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
+  }
+
+  // enable nav dropdown keyboard accessibility on desktop
+  const navDrops = navSections ? navSections.querySelectorAll('.nav-drop') : [];
   if (isDesktop.matches) {
     navDrops.forEach((drop) => {
       if (!drop.hasAttribute('tabindex')) {
         drop.setAttribute('tabindex', 0);
-        drop.addEventListener('focus', focusNavSection);
+        drop.removeEventListener('focus', handleNavDropFocus);
+        drop.addEventListener('focus', handleNavDropFocus);
       }
     });
   } else {
     navDrops.forEach((drop) => {
       drop.removeAttribute('tabindex');
-      drop.removeEventListener('focus', focusNavSection);
+      drop.removeEventListener('focus', handleNavDropFocus);
+      drop.removeEventListener('keydown', openOnKeydown);
     });
   }
 
-  // enable menu collapse on escape keypress
-  if (!expanded || isDesktop.matches) {
-    // collapse menu on escape press
+  // enable/disable close behaviors:
+  // - Escape key + focusout should be active either when desktop (for collapsing sections) OR when menu is open (mobile)
+  if (shouldOpen || isDesktop.matches) {
     window.addEventListener('keydown', closeOnEscape);
-    // collapse menu on focus lost
     nav.addEventListener('focusout', closeOnFocusLost);
   } else {
     window.removeEventListener('keydown', closeOnEscape);
     nav.removeEventListener('focusout', closeOnFocusLost);
   }
+
+  // document click to close only when mobile menu is open
+  if (shouldOpen && !isDesktop.matches) {
+    document.addEventListener('click', onDocumentClickCloseNav);
+  } else {
+    document.removeEventListener('click', onDocumentClickCloseNav);
+  }
 }
+
 
 /**
  * loads and decorates the header, mainly the nav
@@ -168,7 +192,7 @@ export default async function decorate(block) {
     });
   }
 
-  // hamburger for mobile
+  /** hamburger for mobile
   const hamburger = document.createElement('div');
   hamburger.classList.add('nav-hamburger');
   hamburger.innerHTML = `<button type="button" aria-controls="nav" aria-label="Open navigation">
@@ -180,7 +204,7 @@ export default async function decorate(block) {
   // prevent mobile nav behavior on window resize
   toggleMenu(nav, navSections, isDesktop.matches);
   isDesktop.addEventListener('change', () => toggleMenu(nav, navSections, isDesktop.matches));
-
+**/
   const navWrapper = document.createElement('div');
   navWrapper.className = 'nav-wrapper';
   navWrapper.append(nav);
