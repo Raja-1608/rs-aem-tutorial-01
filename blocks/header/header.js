@@ -5,9 +5,8 @@ import { loadFragment } from '../fragment/fragment.js';
 const isDesktop = window.matchMedia('(min-width: 900px)');
 
 /**
- * Toggles all nav sections
- * @param {Element} sections The container element
- * @param {Boolean|String} expanded Whether to expand/collapse sections
+ * Toggle all nav sections (scoped selector).
+ * sections: element, expanded: boolean|'true'|'false'
  */
 function toggleAllNavSections(sections, expanded = false) {
   const isExpanded = expanded === true || expanded === 'true';
@@ -18,79 +17,7 @@ function toggleAllNavSections(sections, expanded = false) {
 }
 
 /**
- * Toggles the entire nav
- * @param {Element} nav The container element
- * @param {Element} navSections The nav sections within the container element
- * @param {Boolean|null} forceExpanded true=open, false=closed, null=toggle
- */
-function toggleMenu(nav, navSections, forceExpanded = null) {
-  const currentOpen = nav.getAttribute('aria-expanded') === 'true';
-  const shouldOpen = forceExpanded !== null ? Boolean(forceExpanded) : !currentOpen;
-  const button = nav.querySelector('.nav-hamburger button');
-
-  // Lock body scroll only when menu is open on mobile
-  document.body.style.overflowY = shouldOpen && !isDesktop.matches ? 'hidden' : '';
-
-  nav.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
-  nav.classList.toggle('nav--open', shouldOpen);
-
-  // Expand sections on desktop only when nav is open on desktop
-  if (navSections) toggleAllNavSections(navSections, shouldOpen && isDesktop.matches);
-
-  if (button) {
-    button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
-  }
-
-  // Enable keyboard accessibility for nav drops on desktop
-  const navDrops = navSections ? navSections.querySelectorAll('.nav-drop') : [];
-  if (isDesktop.matches) {
-    navDrops.forEach((drop) => {
-      if (!drop.hasAttribute('tabindex')) {
-        drop.setAttribute('tabindex', 0);
-        drop.removeEventListener('focus', handleNavDropFocus);
-        drop.addEventListener('focus', handleNavDropFocus);
-      }
-    });
-  } else {
-    navDrops.forEach((drop) => {
-      drop.removeAttribute('tabindex');
-      drop.removeEventListener('focus', handleNavDropFocus);
-      drop.removeEventListener('keydown', openOnKeydown);
-    });
-  }
-
-  // Escape + focusout only active when menu open (mobile) or on desktop for collapse
-  if (shouldOpen || isDesktop.matches) {
-    window.addEventListener('keydown', closeOnEscape);
-    nav.addEventListener('focusout', closeOnFocusLost);
-  } else {
-    window.removeEventListener('keydown', closeOnEscape);
-    nav.removeEventListener('focusout', closeOnFocusLost);
-  }
-
-  // Click outside to close on mobile
-  if (shouldOpen && !isDesktop.matches) {
-    document.addEventListener('click', onDocumentClickCloseNav);
-  } else {
-    document.removeEventListener('click', onDocumentClickCloseNav);
-  }
-}
-
-/**
- * Document-level click handler to close mobile nav when clicking outside
- */
-function onDocumentClickCloseNav(e) {
-  const nav = document.getElementById('nav');
-  if (!nav) return;
-  if (nav.getAttribute('aria-expanded') !== 'true') return;
-  if (!nav.contains(e.target)) {
-    const navSections = nav.querySelector('.nav-sections');
-    toggleMenu(nav, navSections, false);
-  }
-}
-
-/**
- * Keyboard: open nav-drop on Enter/Space
+ * Keyboard handler for opening nav-drops with Enter/Space.
  */
 function openOnKeydown(e) {
   const focused = document.activeElement;
@@ -98,13 +25,14 @@ function openOnKeydown(e) {
 
   if (e.code === 'Enter' || e.code === 'Space') {
     const dropExpanded = focused.getAttribute('aria-expanded') === 'true';
-    toggleAllNavSections(focused.closest('.nav-sections'));
+    const parentSections = focused.closest('.nav-sections');
+    if (parentSections) toggleAllNavSections(parentSections);
     focused.setAttribute('aria-expanded', dropExpanded ? 'false' : 'true');
   }
 }
 
 /**
- * Called when a nav-drop receives focus; installs the keyboard handler on that element.
+ * Called when a nav-drop receives focus; installs keyboard handler.
  */
 function handleNavDropFocus(e) {
   const { target } = e;
@@ -113,6 +41,9 @@ function handleNavDropFocus(e) {
   target.addEventListener('keydown', openOnKeydown);
 }
 
+/**
+ * Close behaviors: Escape key handler.
+ */
 function closeOnEscape(e) {
   if (e.code !== 'Escape') return;
 
@@ -137,6 +68,9 @@ function closeOnEscape(e) {
   }
 }
 
+/**
+ * Close behaviors: focusout handler.
+ */
 function closeOnFocusLost(e) {
   const nav = e.currentTarget;
   if (nav.contains(e.relatedTarget)) return;
@@ -154,8 +88,72 @@ function closeOnFocusLost(e) {
 }
 
 /**
- * loads and decorates the header, mainly the nav
- * @param {Element} block The header block element
+ * Document-level click handler to close mobile nav when clicking outside.
+ */
+function onDocumentClickCloseNav(e) {
+  const nav = document.getElementById('nav');
+  if (!nav) return;
+  if (nav.getAttribute('aria-expanded') !== 'true') return;
+  if (!nav.contains(e.target)) {
+    const navSections = nav.querySelector('.nav-sections');
+    toggleMenu(nav, navSections, false);
+  }
+}
+
+/**
+ * Toggle the entire nav. All referenced helpers are defined above.
+ * forceExpanded: true=open, false=closed, null=toggle
+ */
+function toggleMenu(nav, navSections, forceExpanded = null) {
+  const currentOpen = nav.getAttribute('aria-expanded') === 'true';
+  const shouldOpen = forceExpanded !== null ? Boolean(forceExpanded) : !currentOpen;
+  const button = nav.querySelector('.nav-hamburger button');
+
+  document.body.style.overflowY = shouldOpen && !isDesktop.matches ? 'hidden' : '';
+
+  nav.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+  nav.classList.toggle('nav--open', shouldOpen);
+
+  if (navSections) toggleAllNavSections(navSections, shouldOpen && isDesktop.matches);
+
+  if (button) {
+    button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
+  }
+
+  const navDrops = navSections ? navSections.querySelectorAll('.nav-drop') : [];
+  if (isDesktop.matches) {
+    navDrops.forEach((drop) => {
+      if (!drop.hasAttribute('tabindex')) {
+        drop.setAttribute('tabindex', 0);
+        drop.removeEventListener('focus', handleNavDropFocus);
+        drop.addEventListener('focus', handleNavDropFocus);
+      }
+    });
+  } else {
+    navDrops.forEach((drop) => {
+      drop.removeAttribute('tabindex');
+      drop.removeEventListener('focus', handleNavDropFocus);
+      drop.removeEventListener('keydown', openOnKeydown);
+    });
+  }
+
+  if (shouldOpen || isDesktop.matches) {
+    window.addEventListener('keydown', closeOnEscape);
+    nav.addEventListener('focusout', closeOnFocusLost);
+  } else {
+    window.removeEventListener('keydown', closeOnEscape);
+    nav.removeEventListener('focusout', closeOnFocusLost);
+  }
+
+  if (shouldOpen && !isDesktop.matches) {
+    document.addEventListener('click', onDocumentClickCloseNav);
+  } else {
+    document.removeEventListener('click', onDocumentClickCloseNav);
+  }
+}
+
+/**
+ * decorate: loads and decorates header/nav fragment
  */
 export default async function decorate(block) {
   const navMeta = getMetadata('nav');
@@ -163,6 +161,7 @@ export default async function decorate(block) {
   const fragment = await loadFragment(navPath);
 
   block.textContent = '';
+
   const nav = document.createElement('nav');
   nav.id = 'nav';
   while (fragment.firstElementChild) nav.append(fragment.firstElementChild);
@@ -199,7 +198,7 @@ export default async function decorate(block) {
       });
   }
 
-  // hamburger for mobile - inline SVG + injected styles
+  // hamburger for mobile - inline SVG + minimal injected styles
   const hamburger = document.createElement('div');
   hamburger.classList.add('nav-hamburger');
 
