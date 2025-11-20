@@ -4,69 +4,6 @@ import { loadFragment } from '../fragment/fragment.js';
 // media query match that indicates mobile/tablet width
 const isDesktop = window.matchMedia('(min-width: 900px)');
 
-function closeOnEscape(e) {
-  if (e.code !== 'Escape') return;
-
-  const nav = document.getElementById('nav');
-  if (!nav) return;
-
-  const navSections = nav.querySelector('.nav-sections');
-  const navSectionExpanded = navSections
-    ? navSections.querySelector('[aria-expanded="true"]')
-    : null;
-
-  if (navSectionExpanded && isDesktop.matches) {
-    // collapse all sections but keep focus on the previously expanded element
-    toggleAllNavSections(navSections, false);
-    navSectionExpanded.focus();
-    return;
-  }
-
-  if (!isDesktop.matches) {
-    // close full mobile menu
-    toggleMenu(nav, navSections, false);
-    const btn = nav.querySelector('button');
-    if (btn) btn.focus();
-  }
-}
-
-function closeOnFocusLost(e) {
-  const nav = e.currentTarget;
-  if (nav.contains(e.relatedTarget)) return;
-
-  const navSections = nav.querySelector('.nav-sections');
-  const navSectionExpanded = navSections
-    ? navSections.querySelector('[aria-expanded="true"]')
-    : null;
-
-  if (navSectionExpanded && isDesktop.matches) {
-    toggleAllNavSections(navSections, false);
-  } else if (!isDesktop.matches) {
-    toggleMenu(nav, navSections, false);
-  }
-}
-
-function openOnKeydown(e) {
-  const focused = document.activeElement;
-  if (!focused || focused.className !== 'nav-drop') return;
-
-  if (e.code === 'Enter' || e.code === 'Space') {
-    const dropExpanded = focused.getAttribute('aria-expanded') === 'true';
-    toggleAllNavSections(focused.closest('.nav-sections'));
-    focused.setAttribute('aria-expanded', dropExpanded ? 'false' : 'true');
-  }
-}
-
-/**
- * Called when a nav-drop receives focus; installs the keyboard handler on that element.
- */
-function handleNavDropFocus(e) {
-  const { target } = e;
-  if (!target) return;
-  target.removeEventListener('keydown', openOnKeydown);
-  target.addEventListener('keydown', openOnKeydown);
-}
-
 /**
  * Toggles all nav sections
  * @param {Element} sections The container element
@@ -112,7 +49,7 @@ function toggleMenu(nav, navSections, forceExpanded = null) {
   nav.classList.toggle('nav--open', shouldOpen);
 
   // Expand sections on desktop only when nav is open on desktop
-  toggleAllNavSections(navSections, shouldOpen && isDesktop.matches);
+  if (navSections) toggleAllNavSections(navSections, shouldOpen && isDesktop.matches);
 
   if (button) {
     button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
@@ -150,6 +87,69 @@ function toggleMenu(nav, navSections, forceExpanded = null) {
     document.addEventListener('click', onDocumentClickCloseNav);
   } else {
     document.removeEventListener('click', onDocumentClickCloseNav);
+  }
+}
+
+function openOnKeydown(e) {
+  const focused = document.activeElement;
+  if (!focused || focused.className !== 'nav-drop') return;
+
+  if (e.code === 'Enter' || e.code === 'Space') {
+    const dropExpanded = focused.getAttribute('aria-expanded') === 'true';
+    toggleAllNavSections(focused.closest('.nav-sections'));
+    focused.setAttribute('aria-expanded', dropExpanded ? 'false' : 'true');
+  }
+}
+
+/**
+ * Called when a nav-drop receives focus; installs the keyboard handler on that element.
+ */
+function handleNavDropFocus(e) {
+  const { target } = e;
+  if (!target) return;
+  target.removeEventListener('keydown', openOnKeydown);
+  target.addEventListener('keydown', openOnKeydown);
+}
+
+function closeOnEscape(e) {
+  if (e.code !== 'Escape') return;
+
+  const nav = document.getElementById('nav');
+  if (!nav) return;
+
+  const navSections = nav.querySelector('.nav-sections');
+  const navSectionExpanded = navSections
+    ? navSections.querySelector('[aria-expanded="true"]')
+    : null;
+
+  if (navSectionExpanded && isDesktop.matches) {
+    // collapse all sections but keep focus on the previously expanded element
+    toggleAllNavSections(navSections, false);
+    navSectionExpanded.focus();
+    return;
+  }
+
+  if (!isDesktop.matches) {
+    // close full mobile menu
+    toggleMenu(nav, navSections, false);
+    const btn = nav.querySelector('button');
+    if (btn) btn.focus();
+  }
+}
+
+function closeOnFocusLost(e) {
+  const nav = e.currentTarget;
+  if (nav.contains(e.relatedTarget)) return;
+
+  const navSections = nav.querySelector('.nav-sections');
+  const navSectionExpanded = navSections
+    ? navSections.querySelector('[aria-expanded="true"]')
+    : null;
+
+  if (navSectionExpanded && isDesktop.matches) {
+    toggleAllNavSections(navSections, false);
+  } else if (!isDesktop.matches) {
+    toggleMenu(nav, navSections, false);
   }
 }
 
@@ -251,9 +251,7 @@ export default async function decorate(block) {
       const id = a.getAttribute('href');
       if (!id) return;
       const target = document.querySelector(id);
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       toggleMenu(nav, navSections, false);
     });
   });
