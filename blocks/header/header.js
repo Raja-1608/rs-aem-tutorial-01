@@ -192,19 +192,45 @@ export default async function decorate(block) {
     });
   }
 
-  /** hamburger for mobile
+    // hamburger for mobile - replaced with inline SVG + injected styles
   const hamburger = document.createElement('div');
   hamburger.classList.add('nav-hamburger');
+
   hamburger.innerHTML = `<button type="button" aria-controls="nav" aria-label="Open navigation">
-      <span class="nav-hamburger-icon"></span>
-    </button>`;
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+      <rect class="bar1" x="3" y="6" width="18" height="2" rx="1"></rect>
+      <rect class="bar2" x="3" y="11" width="18" height="2" rx="1"></rect>
+      <rect class="bar3" x="3" y="16" width="18" height="2" rx="1"></rect>
+    </svg>
+  </button>`;
+
+  // inject minimal CSS to animate hamburger (safe: small, scoped to #nav)
+  if (!document.getElementById('nav-inline-styles')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'nav-inline-styles';
+    styleEl.textContent = `
+      #nav svg rect { transition: transform .25s, opacity .25s; transform-origin: center; }
+      #nav.nav--open .bar1 { transform: translateY(5px) rotate(45deg); }
+      #nav.nav--open .bar2 { opacity: 0; transform: scaleX(0); }
+      #nav.nav--open .bar3 { transform: translateY(-5px) rotate(-45deg); }
+      .nav-hamburger button { background: transparent; border: none; padding: 6px; cursor: pointer; }
+    `;
+    document.head.append(styleEl);
+  }
+
   hamburger.addEventListener('click', () => toggleMenu(nav, navSections));
   nav.prepend(hamburger);
   nav.setAttribute('aria-expanded', 'false');
   // prevent mobile nav behavior on window resize
   toggleMenu(nav, navSections, isDesktop.matches);
-  isDesktop.addEventListener('change', () => toggleMenu(nav, navSections, isDesktop.matches));
-**/
+
+  // debounce and react to media query changes
+  let mediaChangeTimer = null;
+  isDesktop.addEventListener('change', () => {
+    if (mediaChangeTimer) clearTimeout(mediaChangeTimer);
+    mediaChangeTimer = setTimeout(() => toggleMenu(nav, navSections, isDesktop.matches), 120);
+  });
+
   const navWrapper = document.createElement('div');
   navWrapper.className = 'nav-wrapper';
   navWrapper.append(nav);
