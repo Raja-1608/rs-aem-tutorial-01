@@ -17,7 +17,59 @@ function toggleAllNavSections(sections, expanded = false) {
 }
 
 /**
- * Keyboard handler for opening nav-drops with Enter/Space.
+ * Toggle the entire nav. All referenced helpers are defined below or above as required.
+ * forceExpanded: true=open, false=closed, null=toggle
+ */
+function toggleMenu(nav, navSections, forceExpanded = null) {
+  const currentOpen = nav.getAttribute('aria-expanded') === 'true';
+  const shouldOpen = forceExpanded !== null ? Boolean(forceExpanded) : !currentOpen;
+  const button = nav.querySelector('.nav-hamburger button');
+
+  document.body.style.overflowY = shouldOpen && !isDesktop.matches ? 'hidden' : '';
+
+  nav.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+  nav.classList.toggle('nav--open', shouldOpen);
+
+  if (navSections) toggleAllNavSections(navSections, shouldOpen && isDesktop.matches);
+
+  if (button) {
+    button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
+  }
+
+  const navDrops = navSections ? navSections.querySelectorAll('.nav-drop') : [];
+  if (isDesktop.matches) {
+    navDrops.forEach((drop) => {
+      if (!drop.hasAttribute('tabindex')) {
+        drop.setAttribute('tabindex', 0);
+        drop.removeEventListener('focus', handleNavDropFocus);
+        drop.addEventListener('focus', handleNavDropFocus);
+      }
+    });
+  } else {
+    navDrops.forEach((drop) => {
+      drop.removeAttribute('tabindex');
+      drop.removeEventListener('focus', handleNavDropFocus);
+      drop.removeEventListener('keydown', openOnKeydown);
+    });
+  }
+
+  if (shouldOpen || isDesktop.matches) {
+    window.addEventListener('keydown', closeOnEscape);
+    nav.addEventListener('focusout', closeOnFocusLost);
+  } else {
+    window.removeEventListener('keydown', closeOnEscape);
+    nav.removeEventListener('focusout', closeOnFocusLost);
+  }
+
+  if (shouldOpen && !isDesktop.matches) {
+    document.addEventListener('click', onDocumentClickCloseNav);
+  } else {
+    document.removeEventListener('click', onDocumentClickCloseNav);
+  }
+}
+
+/**
+ * Keyboard: open nav-drop on Enter/Space
  */
 function openOnKeydown(e) {
   const focused = document.activeElement;
@@ -101,59 +153,8 @@ function onDocumentClickCloseNav(e) {
 }
 
 /**
- * Toggle the entire nav. All referenced helpers are defined above.
- * forceExpanded: true=open, false=closed, null=toggle
- */
-function toggleMenu(nav, navSections, forceExpanded = null) {
-  const currentOpen = nav.getAttribute('aria-expanded') === 'true';
-  const shouldOpen = forceExpanded !== null ? Boolean(forceExpanded) : !currentOpen;
-  const button = nav.querySelector('.nav-hamburger button');
-
-  document.body.style.overflowY = shouldOpen && !isDesktop.matches ? 'hidden' : '';
-
-  nav.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
-  nav.classList.toggle('nav--open', shouldOpen);
-
-  if (navSections) toggleAllNavSections(navSections, shouldOpen && isDesktop.matches);
-
-  if (button) {
-    button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
-  }
-
-  const navDrops = navSections ? navSections.querySelectorAll('.nav-drop') : [];
-  if (isDesktop.matches) {
-    navDrops.forEach((drop) => {
-      if (!drop.hasAttribute('tabindex')) {
-        drop.setAttribute('tabindex', 0);
-        drop.removeEventListener('focus', handleNavDropFocus);
-        drop.addEventListener('focus', handleNavDropFocus);
-      }
-    });
-  } else {
-    navDrops.forEach((drop) => {
-      drop.removeAttribute('tabindex');
-      drop.removeEventListener('focus', handleNavDropFocus);
-      drop.removeEventListener('keydown', openOnKeydown);
-    });
-  }
-
-  if (shouldOpen || isDesktop.matches) {
-    window.addEventListener('keydown', closeOnEscape);
-    nav.addEventListener('focusout', closeOnFocusLost);
-  } else {
-    window.removeEventListener('keydown', closeOnEscape);
-    nav.removeEventListener('focusout', closeOnFocusLost);
-  }
-
-  if (shouldOpen && !isDesktop.matches) {
-    document.addEventListener('click', onDocumentClickCloseNav);
-  } else {
-    document.removeEventListener('click', onDocumentClickCloseNav);
-  }
-}
-
-/**
- * decorate: loads and decorates header/nav fragment
+ * loads and decorates the header, mainly the nav
+ * @param {Element} block The header block element
  */
 export default async function decorate(block) {
   const navMeta = getMetadata('nav');
@@ -161,7 +162,6 @@ export default async function decorate(block) {
   const fragment = await loadFragment(navPath);
 
   block.textContent = '';
-
   const nav = document.createElement('nav');
   nav.id = 'nav';
   while (fragment.firstElementChild) nav.append(fragment.firstElementChild);
