@@ -47,8 +47,11 @@ function openOnKeydown(e) {
   }
 }
 
-function focusNavSection() {
-  document.activeElement.addEventListener('keydown', openOnKeydown);
+function handleNavDropFocus(e) {
+  const target = e.target;
+  if (!target) return;
+  target.removeEventListener('keydown', openOnKeydown);
+  target.addEventListener('keydown', openOnKeydown);
 }
 
 /**
