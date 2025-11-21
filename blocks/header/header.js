@@ -43,32 +43,8 @@ function handleNavDropFocus(e) {
 }
 
 /**
- * Document-level click handler to close mobile nav when clicking outside.
- * Defined early to avoid calling a function declared later.
- */
-function onDocumentClickCloseNav(e) {
-  const nav = document.getElementById('nav');
-  if (!nav) return;
-  if (nav.getAttribute('aria-expanded') !== 'true') return;
-  if (nav.contains(e.target)) return;
-
-  const navSections = nav.querySelector('.nav-sections');
-  if (navSections) toggleAllNavSections(navSections, false);
-
-  nav.setAttribute('aria-expanded', 'false');
-  document.body.style.overflowY = '';
-
-  const btn = nav.querySelector('.nav-hamburger button');
-  if (btn) btn.setAttribute('aria-label', 'Open navigation');
-
-  // remove listeners that should only be present when nav is open
-  window.removeEventListener('keydown', closeOnEscape);
-  nav.removeEventListener('focusout', closeOnFocusLost);
-  document.removeEventListener('click', onDocumentClickCloseNav);
-}
-
-/**
  * Close behaviors: Escape key handler.
+ * Collapses sections on desktop, closes menu on mobile (inline close).
  * Defined before callers to avoid no-use-before-define.
  */
 function closeOnEscape(e) {
@@ -137,9 +113,33 @@ function closeOnFocusLost(e) {
 }
 
 /**
+ * Document-level click handler to close mobile nav when clicking outside.
+ * This is defined after close handlers so references to them are valid.
+ */
+function onDocumentClickCloseNav(e) {
+  const nav = document.getElementById('nav');
+  if (!nav) return;
+  if (nav.getAttribute('aria-expanded') !== 'true') return;
+  if (nav.contains(e.target)) return;
+
+  const navSections = nav.querySelector('.nav-sections');
+  if (navSections) toggleAllNavSections(navSections, false);
+
+  nav.setAttribute('aria-expanded', 'false');
+  document.body.style.overflowY = '';
+
+  const btn = nav.querySelector('.nav-hamburger button');
+  if (btn) btn.setAttribute('aria-label', 'Open navigation');
+
+  // remove listeners that should only be present when nav is open
+  window.removeEventListener('keydown', closeOnEscape);
+  nav.removeEventListener('focusout', closeOnFocusLost);
+  document.removeEventListener('click', onDocumentClickCloseNav);
+}
+
+/**
  * Toggle the entire nav.
  * forceExpanded: true=open, false=closed, null=toggle
- * toggleMenu is defined after all helpers it relies on (no-use-before-define safe).
  */
 function toggleMenu(nav, navSections, forceExpanded = null) {
   const currentOpen = nav.getAttribute('aria-expanded') === 'true';
