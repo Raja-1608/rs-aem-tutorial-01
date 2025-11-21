@@ -17,7 +17,7 @@ function toggleAllNavSections(sections, expanded = false) {
 }
 
 /**
- * Keyboard: open nav-drop on Enter/Space
+ * Keyboard: open nav-drop on Enter/Space.
  */
 function openOnKeydown(e) {
   const focused = document.activeElement;
@@ -42,76 +42,34 @@ function handleNavDropFocus(e) {
 }
 
 /**
- * Toggle the entire nav. Placed before callers to satisfy lint rule.
- * forceExpanded: true=open, false=closed, null=toggle
- */
-function toggleMenu(nav, navSections, forceExpanded = null) {
-  const currentOpen = nav.getAttribute('aria-expanded') === 'true';
-  const shouldOpen = forceExpanded !== null ? Boolean(forceExpanded) : !currentOpen;
-  const button = nav.querySelector('.nav-hamburger button');
-
-  // Lock body scroll only when menu is open on mobile
-  document.body.style.overflowY = shouldOpen && !isDesktop.matches ? 'hidden' : '';
-
-  nav.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
-  nav.classList.toggle('nav--open', shouldOpen);
-
-  if (navSections) toggleAllNavSections(navSections, shouldOpen && isDesktop.matches);
-
-  if (button) {
-    button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
-  }
-
-  // Enable nav dropdown keyboard accessibility on desktop
-  const navDrops = navSections ? navSections.querySelectorAll('.nav-drop') : [];
-  if (isDesktop.matches) {
-    navDrops.forEach((drop) => {
-      if (!drop.hasAttribute('tabindex')) {
-        drop.setAttribute('tabindex', 0);
-        drop.removeEventListener('focus', handleNavDropFocus);
-        drop.addEventListener('focus', handleNavDropFocus);
-      }
-    });
-  } else {
-    navDrops.forEach((drop) => {
-      drop.removeAttribute('tabindex');
-      drop.removeEventListener('focus', handleNavDropFocus);
-      drop.removeEventListener('keydown', openOnKeydown);
-    });
-  }
-
-  // Escape + focusout only active when menu open (mobile) or on desktop for collapse
-  if (shouldOpen || isDesktop.matches) {
-    window.addEventListener('keydown', closeOnEscape);
-    nav.addEventListener('focusout', closeOnFocusLost);
-  } else {
-    window.removeEventListener('keydown', closeOnEscape);
-    nav.removeEventListener('focusout', closeOnFocusLost);
-  }
-
-  // Click outside to close on mobile
-  if (shouldOpen && !isDesktop.matches) {
-    document.addEventListener('click', onDocumentClickCloseNav);
-  } else {
-    document.removeEventListener('click', onDocumentClickCloseNav);
-  }
-}
-
-/**
  * Document-level click handler to close mobile nav when clicking outside.
+ * This performs the close actions directly (doesn't call toggleMenu) to avoid
+ * calling a later-defined function and to prevent circular dependencies.
  */
 function onDocumentClickCloseNav(e) {
   const nav = document.getElementById('nav');
   if (!nav) return;
   if (nav.getAttribute('aria-expanded') !== 'true') return;
-  if (!nav.contains(e.target)) {
-    const navSections = nav.querySelector('.nav-sections');
-    toggleMenu(nav, navSections, false);
-  }
+  if (nav.contains(e.target)) return;
+
+  const navSections = nav.querySelector('.nav-sections');
+  if (navSections) toggleAllNavSections(navSections, false);
+
+  nav.setAttribute('aria-expanded', 'false');
+  document.body.style.overflowY = '';
+
+  const btn = nav.querySelector('.nav-hamburger button');
+  if (btn) btn.setAttribute('aria-label', 'Open navigation');
+
+  // remove listeners that should only be present when nav is open
+  window.removeEventListener('keydown', closeOnEscape);
+  nav.removeEventListener('focusout', closeOnFocusLost);
+  document.removeEventListener('click', onDocumentClickCloseNav);
 }
 
 /**
  * Close behaviors: Escape key handler.
+ * Collapses sections on desktop, closes menu on mobile (inline close).
  */
 function closeOnEscape(e) {
   if (e.code !== 'Escape') return;
@@ -130,10 +88,19 @@ function closeOnEscape(e) {
     return;
   }
 
+  // on mobile: perform same close actions inline
   if (!isDesktop.matches) {
-    toggleMenu(nav, navSections, false);
-    const btn = nav.querySelector('button');
-    if (btn) btn.focus();
+    const sections = nav.querySelector('.nav-sections');
+    if (sections) toggleAllNavSections(sections, false);
+    nav.setAttribute('aria-expanded', 'false');
+    document.body.style.overflowY = '';
+    const btn = nav.querySelector('.nav-hamburger button');
+    if (btn) btn.setAttribute('aria-label', 'Open navigation');
+    window.removeEventListener('keydown', closeOnEscape);
+    nav.removeEventListener('focusout', closeOnFocusLost);
+    document.removeEventListener('click', onDocumentClickCloseNav);
+    const button = nav.querySelector('button');
+    if (button) button.focus();
   }
 }
 
@@ -151,8 +118,72 @@ function closeOnFocusLost(e) {
 
   if (navSectionExpanded && isDesktop.matches) {
     toggleAllNavSections(navSections, false);
-  } else if (!isDesktop.matches) {
-    toggleMenu(nav, navSections, false);
+    return;
+  }
+
+  if (!isDesktop.matches) {
+    // inline close actions (mobile)
+    const sections = nav.querySelector('.nav-sections');
+    if (sections) toggleAllNavSections(sections, false);
+    nav.setAttribute('aria-expanded', 'false');
+    document.body.style.overflowY = '';
+    const btn = nav.querySelector('.nav-hamburger button');
+    if (btn) btn.setAttribute('aria-label', 'Open navigation');
+    window.removeEventListener('keydown', closeOnEscape);
+    nav.removeEventListener('focusout', closeOnFocusLost);
+    document.removeEventListener('click', onDocumentClickCloseNav);
+  }
+}
+
+/**
+ * Toggle the entire nav.
+ * forceExpanded: true=open, false=closed, null=toggle
+ */
+function toggleMenu(nav, navSections, forceExpanded = null) {
+  const currentOpen = nav.getAttribute('aria-expanded') === 'true';
+  const shouldOpen = forceExpanded !== null ? Boolean(forceExpanded) : !currentOpen;
+  const button = nav.querySelector('.nav-hamburger button');
+
+  document.body.style.overflowY = shouldOpen && !isDesktop.matches ? 'hidden' : '';
+
+  nav.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+  nav.classList.toggle('nav--open', shouldOpen);
+
+  if (navSections) toggleAllNavSections(navSections, shouldOpen && isDesktop.matches);
+
+  if (button) {
+    button.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
+  }
+
+  const navDrops = navSections ? navSections.querySelectorAll('.nav-drop') : [];
+  if (isDesktop.matches) {
+    navDrops.forEach((drop) => {
+      if (!drop.hasAttribute('tabindex')) {
+        drop.setAttribute('tabindex', 0);
+        drop.removeEventListener('focus', handleNavDropFocus);
+        drop.addEventListener('focus', handleNavDropFocus);
+      }
+    });
+  } else {
+    navDrops.forEach((drop) => {
+      drop.removeAttribute('tabindex');
+      drop.removeEventListener('focus', handleNavDropFocus);
+      drop.removeEventListener('keydown', openOnKeydown);
+    });
+  }
+
+  if (shouldOpen || isDesktop.matches) {
+    window.addEventListener('keydown', closeOnEscape);
+    nav.addEventListener('focusout', closeOnFocusLost);
+  } else {
+    window.removeEventListener('keydown', closeOnEscape);
+    nav.removeEventListener('focusout', closeOnFocusLost);
+  }
+
+  if (shouldOpen && !isDesktop.matches) {
+    document.addEventListener('click', onDocumentClickCloseNav);
+  } else {
+    document.removeEventListener('click', onDocumentClickCloseNav);
   }
 }
 
