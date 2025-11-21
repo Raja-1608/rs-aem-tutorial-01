@@ -3,6 +3,48 @@ import { loadFragment } from '../fragment/fragment.js';
 
 // media query match that indicates mobile/tablet width
 const isDesktop = window.matchMedia('(min-width: 900px)');
+
+/**
+ * Toggle all nav sections (scoped selector).
+ * sections: element, expanded: boolean|'true'|'false'
+ */
+function toggleAllNavSections(sections, expanded = false) {
+  const isExpanded = expanded === true || expanded === 'true';
+  const selector = ':scope .default-content-wrapper > ul > li';
+  sections.querySelectorAll(selector).forEach((section) => {
+    section.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+  });
+}
+
+/**
+ * Keyboard: open nav-drop on Enter/Space
+ */
+function openOnKeydown(e) {
+  const focused = document.activeElement;
+  if (!focused || focused.className !== 'nav-drop') return;
+
+  if (e.code === 'Enter' || e.code === 'Space') {
+    const dropExpanded = focused.getAttribute('aria-expanded') === 'true';
+    const parent = focused.closest('.nav-sections');
+    if (parent) toggleAllNavSections(parent);
+    focused.setAttribute('aria-expanded', dropExpanded ? 'false' : 'true');
+  }
+}
+
+/**
+ * Called when a nav-drop receives focus; installs keyboard handler.
+ */
+function handleNavDropFocus(e) {
+  const { target } = e;
+  if (!target) return;
+  target.removeEventListener('keydown', openOnKeydown);
+  target.addEventListener('keydown', openOnKeydown);
+}
+
+/**
+ * Toggle the entire nav. Placed before callers to satisfy lint rule.
+ * forceExpanded: true=open, false=closed, null=toggle
+ */
 function toggleMenu(nav, navSections, forceExpanded = null) {
   const currentOpen = nav.getAttribute('aria-expanded') === 'true';
   const shouldOpen = forceExpanded !== null ? Boolean(forceExpanded) : !currentOpen;
@@ -56,41 +98,16 @@ function toggleMenu(nav, navSections, forceExpanded = null) {
 }
 
 /**
- * Toggle all nav sections (scoped selector).
- * sections: element, expanded: boolean|'true'|'false'
+ * Document-level click handler to close mobile nav when clicking outside.
  */
-function toggleAllNavSections(sections, expanded = false) {
-  const isExpanded = expanded === true || expanded === 'true';
-  const selector = ':scope .default-content-wrapper > ul > li';
-  sections.querySelectorAll(selector).forEach((section) => {
-    section.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-  });
-}
-
-/**
- * Keyboard: open nav-drop on Enter/Space
- * (kept before usage so lint no-use-before-define is satisfied)
- */
-function openOnKeydown(e) {
-  const focused = document.activeElement;
-  if (!focused || focused.className !== 'nav-drop') return;
-
-  if (e.code === 'Enter' || e.code === 'Space') {
-    const dropExpanded = focused.getAttribute('aria-expanded') === 'true';
-    const parent = focused.closest('.nav-sections');
-    if (parent) toggleAllNavSections(parent);
-    focused.setAttribute('aria-expanded', dropExpanded ? 'false' : 'true');
+function onDocumentClickCloseNav(e) {
+  const nav = document.getElementById('nav');
+  if (!nav) return;
+  if (nav.getAttribute('aria-expanded') !== 'true') return;
+  if (!nav.contains(e.target)) {
+    const navSections = nav.querySelector('.nav-sections');
+    toggleMenu(nav, navSections, false);
   }
-}
-
-/**
- * Called when a nav-drop receives focus; installs keyboard handler.
- */
-function handleNavDropFocus(e) {
-  const { target } = e;
-  if (!target) return;
-  target.removeEventListener('keydown', openOnKeydown);
-  target.addEventListener('keydown', openOnKeydown);
 }
 
 /**
@@ -138,24 +155,6 @@ function closeOnFocusLost(e) {
     toggleMenu(nav, navSections, false);
   }
 }
-
-/**
- * Document-level click handler to close mobile nav when clicking outside.
- */
-function onDocumentClickCloseNav(e) {
-  const nav = document.getElementById('nav');
-  if (!nav) return;
-  if (nav.getAttribute('aria-expanded') !== 'true') return;
-  if (!nav.contains(e.target)) {
-    const navSections = nav.querySelector('.nav-sections');
-    toggleMenu(nav, navSections, false);
-  }
-}
-
-/**
- * Toggle the entire nav. All referenced helpers are defined above.
- * forceExpanded: true=open, false=closed, null=toggle
- */
 
 /**
  * loads and decorates the header, mainly the nav
