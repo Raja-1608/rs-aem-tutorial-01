@@ -18,6 +18,7 @@ function toggleAllNavSections(sections, expanded = false) {
 
 /**
  * Keyboard: open nav-drop on Enter/Space.
+ * (defined early so callers can use it without lint errors)
  */
 function openOnKeydown(e) {
   const focused = document.activeElement;
@@ -43,8 +44,7 @@ function handleNavDropFocus(e) {
 
 /**
  * Document-level click handler to close mobile nav when clicking outside.
- * This performs the close actions directly (doesn't call toggleMenu) to avoid
- * calling a later-defined function and to prevent circular dependencies.
+ * Defined early to avoid calling a function declared later.
  */
 function onDocumentClickCloseNav(e) {
   const nav = document.getElementById('nav');
@@ -69,7 +69,7 @@ function onDocumentClickCloseNav(e) {
 
 /**
  * Close behaviors: Escape key handler.
- * Collapses sections on desktop, closes menu on mobile (inline close).
+ * Defined before callers to avoid no-use-before-define.
  */
 function closeOnEscape(e) {
   if (e.code !== 'Escape') return;
@@ -106,6 +106,7 @@ function closeOnEscape(e) {
 
 /**
  * Close behaviors: focusout handler.
+ * Defined early so toggleMenu and other callers can reference it.
  */
 function closeOnFocusLost(e) {
   const nav = e.currentTarget;
@@ -138,6 +139,7 @@ function closeOnFocusLost(e) {
 /**
  * Toggle the entire nav.
  * forceExpanded: true=open, false=closed, null=toggle
+ * toggleMenu is defined after all helpers it relies on (no-use-before-define safe).
  */
 function toggleMenu(nav, navSections, forceExpanded = null) {
   const currentOpen = nav.getAttribute('aria-expanded') === 'true';
